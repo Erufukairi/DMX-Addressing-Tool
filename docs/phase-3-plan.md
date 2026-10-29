@@ -35,7 +35,7 @@ These were decided during planning:
   - Continue: start = the summary's next address; footprint and quantity blank. Shown only when there is a next address.
 - **"Sorted by last opened" needs a field.** Add optional `lastOpenedAt?: number` to `Layout`. It's optional, so `schemaVersion` stays 1 and older data still reads. Update design doc §6. `updatedAt` keeps meaning "last saved".
 - **No router.** The layouts screen is a full-screen panel switched by component state.
-- **Confirmations use native `window.confirm()`.** It works in iOS and Android standalone apps and needs no custom dialog. It's used for deleting a layout and for discarding unsaved changes.
+- **Confirmations use native `window.confirm()`.** It works in iOS and Android standalone apps and needs no custom dialog. It's used for deleting a layout, for discarding unsaved changes, and before Reset or Reset checks clears any done checks. Continue doesn't ask: it's used when a pipe is finished.
 
 ## Order of work
 
@@ -47,7 +47,7 @@ All state transitions live in one pure module so they can be tested without a DO
   - `WorkingState`: the current inputs as typed strings (footprint, start, quantity, so partial typing round-trips), `doneUnits`, plus `openId?: string` and `saved?: Layout` (the stored copy of the open saved layout, used to detect unsaved changes).
   - A reducer, or plain functions, for: `setFootprint`, `setStart`, `setQuantity`, `toggleDone(unit)`, `resetChecks`, `reset`, `continueFrom(nextAddress)`, `openSaved(layout)`, `markSaved(layout)`.
   - `toLayout(state)`: builds the `Layout` the engine and storage use.
-  - `isDirty(state)`: true when the inputs, name, or location note differ from `saved`. Compare values, not the typed strings, so "019" and "19" count as the same.
+  - `isDirty(state)`: true when the inputs differ from `saved`. Compare values, not the typed strings, so "019" and "19" count as the same. (Implemented: name and location note live only in the Layouts panel's save form, so they aren't part of the working state or the dirty check.)
   - Check-clearing rules from the decisions above. For a quantity change, drop checks for units above the new placed count. If the new inputs don't validate, leave checks alone until they do.
 - **`tests/state/working.test.ts`**: every transition and rule above, including:
   - Continue from the exact-fill case is not offered (no next address).
@@ -67,7 +67,7 @@ All state transitions live in one pure module so they can be tested without a DO
 ### 3. UI
 
 - **Main screen** (`src/ui/App.tsx`, splitting out components where it helps):
-  - **Reset** button near the inputs, at least 48px.
+  - **Reset** button, at least 48px. (Implemented as an icon at the right end of the input row, after a design review with the user. The sticky bar is the summary with **Continue** beside it, then "N of M done" beside **Reset checks**. "Unsaved changes" sits under the Layouts button, and the version moved to a centered footer under the table. The summary wording was shortened for lighting techs, e.g. "26 units · 18 addr left, next 495"; see design doc §4. Whether Continue and Reset checks belong at the bottom of the table instead is an open question for later.)
   - **Continue** button at the end of the summary line, labelled with the address, e.g. "Continue from 495".
   - **Tap a row to toggle done:** checkmark plus dimmed row. Each row's content is a full-width `<button aria-pressed>` so it is keyboard- and screen-reader-accessible.
   - **Reset checks** appears when any unit is checked.

@@ -27,7 +27,8 @@ export interface Layout {
   simple?: { footprint: number; quantity?: number };
   sequence?: SequenceItem[];
   doneUnits: number[];
-  updatedAt: number;
+  updatedAt: number; // last saved
+  lastOpenedAt?: number; // sorts the saved list; optional, so older data still reads
   schemaVersion: 1;
 }
 

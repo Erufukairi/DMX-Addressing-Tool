@@ -1,18 +1,27 @@
-import { useRef, useState } from 'preact/hooks';
-import { useRegisterSW } from 'virtual:pwa-register/preact';
+import { useEffect, useRef, useState } from 'preact/hooks';
+import type { Layout } from '../engine';
+import { putLayout } from '../storage/layouts';
+import { loadWorkingState, saveWorkingState } from '../storage/working';
 import {
-  computeLayout,
-  formatSummary,
-  hasErrors,
-  validateLayout,
-  type FieldErrors,
-  type Layout,
-  type LayoutResult,
-} from '../engine';
-
-function toNumber(value: string): number | undefined {
-  return value.trim() === '' ? undefined : Number(value);
-}
+  checksAutosave,
+  continueFrom,
+  detach,
+  evaluate,
+  initialState,
+  isDirty,
+  markSaved,
+  openSaved,
+  reset,
+  resetChecks,
+  setFootprint,
+  setQuantity,
+  setStart,
+  toggleDone,
+  type WorkingState,
+} from '../state/working';
+import { LayoutsPanel } from './LayoutsPanel';
+import { UnitTable } from './UnitTable';
+import { useUpdateNotice } from './useUpdateNotice';
 
 interface NumberFieldProps {
   id: string;
@@ -50,139 +59,222 @@ function NumberField({ id, label, value, onInput, error, placeholder }: NumberFi
   );
 }
 
-/**
- * Activate the waiting service worker, then reload into the new version.
- * Not the plugin's updateServiceWorker(): in iOS standalone apps resumed from the background,
- * its message or the `controlling` event it waits for can go missing, so the tap did nothing.
- * Here we message the waiting worker directly, reload on whichever signal comes first,
- * and reload anyway after a timeout.
- */
-function applyUpdate(registration: ServiceWorkerRegistration | undefined) {
-  let reloading = false;
-  const reload = () => {
-    if (reloading) return;
-    reloading = true;
-    window.location.reload();
-  };
-  const waiting = registration?.waiting;
-  if (!waiting) {
-    reload();
-    return;
-  }
-  navigator.serviceWorker.addEventListener('controllerchange', reload);
-  waiting.addEventListener('statechange', () => {
-    if (waiting.state === 'activated') reload();
-  });
-  waiting.postMessage({ type: 'SKIP_WAITING' });
-  setTimeout(reload, 3000);
+/** Counter-clockwise arrow. */
+function ResetIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="26"
+      height="26"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1" />
+      <path d="M3.5 3.5v5h5" />
+    </svg>
+  );
 }
 
-/** Service worker updates: prompt, never auto-reload mid-job (phase-2-plan §2). */
-function useUpdateNotice() {
-  const registration = useRef<ServiceWorkerRegistration | undefined>(undefined);
-  const [updating, setUpdating] = useState(false);
-  const {
-    needRefresh: [needRefresh],
-  } = useRegisterSW({
-    onRegisteredSW(_url, r) {
-      if (!r) return;
-      registration.current = r;
-      // Installed apps can stay open for days; check again whenever the app comes back to the foreground.
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && navigator.onLine) {
-          r.update().catch(() => {});
-        }
-      });
-    },
-  });
-  const reload = () => {
-    setUpdating(true);
-    applyUpdate(registration.current);
+function confirmClearChecks(state: WorkingState): boolean {
+  const n = state.doneUnits.length;
+  return n === 0 || window.confirm(`Clear ${n} done check${n === 1 ? '' : 's'}?`);
+}
+
+/**
+ * The Layouts panel is a full-screen view. It gets a history entry so the phone's Back gesture
+ * returns to the table instead of leaving the app.
+ */
+function useLayoutsView() {
+  const [showLayouts, setShowLayouts] = useState(false);
+  useEffect(() => {
+    const onPop = () => setShowLayouts(false);
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  const openLayouts = () => {
+    try {
+      history.pushState({ view: 'layouts' }, '');
+    } catch {
+      // No history in this context; the Back button still works.
+    }
+    setShowLayouts(true);
   };
-  return { needRefresh, updating, reload };
+  const closeLayouts = () => {
+    if (history.state?.view === 'layouts') history.back();
+    else setShowLayouts(false);
+  };
+  return { showLayouts, openLayouts, closeLayouts };
 }
 
 export function App() {
-  const [footprint, setFootprint] = useState('');
-  const [start, setStart] = useState('1');
-  const [quantity, setQuantity] = useState('');
+  const [state, setState] = useState<WorkingState>(() => loadWorkingState() ?? initialState());
+  const { showLayouts, openLayouts, closeLayouts } = useLayoutsView();
   const { needRefresh, updating, reload } = useUpdateNotice();
 
-  const fp = toNumber(footprint);
-  const st = toNumber(start);
-  const qty = toNumber(quantity);
-  const layout: Layout = {
-    id: 'simple',
-    name: '',
-    mode: 'simple',
-    startAddress: st ?? NaN,
-    simple: qty === undefined ? { footprint: fp ?? NaN } : { footprint: fp ?? NaN, quantity: qty },
-    doneUnits: [],
-    updatedAt: 0,
-    schemaVersion: 1,
-  };
+  const pendingCheckSave = useRef<Layout | null>(null);
 
-  // A blank required field is "not entered yet", not an error.
-  const errors: FieldErrors = validateLayout(layout);
-  if (fp === undefined) delete errors.footprint;
-  if (st === undefined) delete errors.startAddress;
-  const incomplete = fp === undefined || st === undefined;
-  const result: LayoutResult | null = incomplete || hasErrors(errors) ? null : computeLayout(layout);
+  // Kept on the device, saved or not, so a relaunch comes back where the user was.
+  useEffect(() => {
+    saveWorkingState(state);
+    if (pendingCheckSave.current) {
+      putLayout(pendingCheckSave.current).catch(() => {});
+      pendingCheckSave.current = null;
+    }
+  }, [state]);
 
-  let status: string;
-  if (result) status = formatSummary(layout, result);
-  else if (hasErrors(errors)) status = Object.keys(errors).length > 1 ? 'Fix the highlighted fields' : 'Fix the highlighted field';
-  else if (fp === undefined) status = 'Enter a footprint';
-  else status = 'Enter a start address';
+  const { errors, result, status } = evaluate(state);
+  const nextAddress = result?.nextAddress ?? null;
+  const dirty = isDirty(state);
+  const doneCount = state.doneUnits.length;
+
+
+  /** Check changes on an open, unmodified saved layout are written to it after the render. */
+  function changeChecks(change: (s: WorkingState) => WorkingState) {
+    // setState(fn), so taps that land before a re-render all apply.
+    setState((s) => {
+      const next = change(s);
+      if (!checksAutosave(next)) return next;
+      const layout: Layout = { ...next.saved!, doneUnits: next.doneUnits };
+      pendingCheckSave.current = layout;
+      return markSaved(next, layout);
+    });
+  }
+
+  const updateNotice = needRefresh && (
+    <button type="button" class="update-notice" onClick={reload} disabled={updating}>
+      {updating ? 'Updating…' : 'Update available, tap to reload'}
+    </button>
+  );
+
+  if (showLayouts) {
+    return (
+      <div class="app">
+        <LayoutsPanel
+          state={state}
+          onBack={closeLayouts}
+          onOpen={(layout) => {
+            setState(() => openSaved(layout));
+            closeLayouts();
+          }}
+          onSaved={(layout) => {
+            setState((s) => markSaved(s, layout));
+            closeLayouts();
+          }}
+          onDeleted={(id) => {
+            setState((s) => (s.saved?.id === id ? detach(s) : s));
+          }}
+        />
+        {updateNotice}
+      </div>
+    );
+  }
 
   return (
     <div class="app">
       <header class="app-header">
-        <h1>DMX Address Table</h1>
-        <span class="version">v{__APP_VERSION__}</span>
+        <div class="app-title">
+          <h1>{state.saved ? state.saved.name : 'DMX Address Table'}</h1>
+          {state.saved?.locationNote && <p class="app-meta">{state.saved.locationNote}</p>}
+        </div>
+        <div class="header-actions">
+          <button type="button" class="button" onClick={openLayouts}>
+            Layouts
+          </button>
+          {dirty && <span class="unsaved">Unsaved changes</span>}
+        </div>
       </header>
 
       <form class="inputs" onSubmit={(e) => e.preventDefault()}>
-        <NumberField id="footprint" label="Footprint" value={footprint} onInput={setFootprint} error={errors.footprint} />
-        <NumberField id="start" label="Start" value={start} onInput={setStart} error={errors.startAddress} />
+        <NumberField
+          id="footprint"
+          label="Footprint"
+          value={state.footprint}
+          onInput={(v) => setState((s) => setFootprint(s, v))}
+          error={errors.footprint}
+        />
+        <NumberField
+          id="start"
+          label="Start"
+          value={state.start}
+          onInput={(v) => setState((s) => setStart(s, v))}
+          error={errors.startAddress}
+        />
         <NumberField
           id="quantity"
           label="Quantity"
-          value={quantity}
-          onInput={setQuantity}
+          value={state.quantity}
+          onInput={(v) => setState((s) => setQuantity(s, v))}
           error={errors.quantity}
           placeholder="Fill"
         />
+        <div class="field">
+          <span class="field-label-spacer" aria-hidden="true">
+            &nbsp;
+          </span>
+          <button
+            type="button"
+            class="icon-button"
+            aria-label="Reset"
+            title="Reset"
+            onClick={() => {
+              if (confirmClearChecks(state)) setState(() => reset());
+            }}
+          >
+            <ResetIcon />
+          </button>
+        </div>
       </form>
 
-      <p class={result ? 'summary' : 'summary summary-idle'} role="status" aria-live="polite">
-        {status}
-      </p>
+      <div class="sticky-bar">
+        <div class="bar-row">
+          <p class={result ? 'summary' : 'summary summary-idle'} role="status" aria-live="polite">
+            {/* Keep "next 495" together when the line wraps. */}
+            {status.replace(/next (\d+)/, 'next $1')}
+          </p>
+          {nextAddress !== null && (
+            <button
+              type="button"
+              class="button button-primary"
+              aria-label={`Continue from ${nextAddress}`}
+              onClick={() => setState((s) => continueFrom(s))}
+            >
+              Continue
+            </button>
+          )}
+        </div>
+        {result && doneCount > 0 && (
+          <div class="bar-row bar-row-end">
+            <span class="done-count">
+              {doneCount} of {result.placed.length} done
+            </span>
+            <button
+              type="button"
+              class="button"
+              onClick={() => {
+                if (confirmClearChecks(state)) changeChecks(resetChecks);
+              }}
+            >
+              Reset checks
+            </button>
+          </div>
+        )}
+      </div>
 
       {result && result.placed.length > 0 && (
-        <table class="units">
-          <thead>
-            <tr>
-              <th scope="col">Unit #</th>
-              <th scope="col">Address</th>
-            </tr>
-          </thead>
-          <tbody>
-            {result.placed.map((f) => (
-              <tr key={f.unit}>
-                <td class="unit">{f.unit}</td>
-                <td class="address">{f.address}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <UnitTable
+          placed={result.placed}
+          doneUnits={state.doneUnits}
+          onToggle={(unit) => changeChecks((s) => toggleDone(s, unit))}
+        />
       )}
 
-      {needRefresh && (
-        <button type="button" class="update-notice" onClick={reload} disabled={updating}>
-          {updating ? 'Updating…' : 'Update available, tap to reload'}
-        </button>
-      )}
+      <footer class="app-footer">v{__APP_VERSION__}</footer>
+
+      {updateNotice}
     </div>
   );
 }

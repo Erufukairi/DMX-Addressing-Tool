@@ -90,10 +90,13 @@ remaining     = 512 − nextAddress + 1             // addresses left
 If `nextAddress > 512`, then `remaining = 0` and there is no next address.
 
 ### Summary line
-Format: **"Fit 21 fixtures · 45 addresses left starting at 468"**
+Format: **"21 units · 8 addr left, next 505"** (footprint 24 from 1)
 
-- If the universe is filled exactly: "Fit 32 fixtures · universe full".
-- If a quantity was entered and some fixtures didn't fit: "Fit 21 of 24 fixtures · 3 didn't fit · 45 addresses left starting at 468".
+Terse on purpose: the readers are lighting techs, who know what the numbers mean.
+
+- If the universe is filled exactly: "32 units · universe full".
+- If a quantity was entered and some fixtures didn't fit: "21 of 24 units · 3 didn't fit · 8 addr left, next 505".
+- If nothing fits: "No units fit · 511 addr left from 2".
 
 ## 5. Features
 
@@ -137,6 +140,8 @@ Block list interactions: add, duplicate, delete, reorder (drag handle plus up/do
 
 ### 5.4 Save, Share, Export
 - **Saved layouts:** each has a name. The list is sorted by last opened. Each layout includes an optional free-text **location note**, e.g. "Univ 4 - 1st Elec". This is the only place universe information appears, and the app treats it as plain text with no meaning.
+  - Changes to an open layout's inputs are kept only when the user taps Save; the header shows "Unsaved changes" until then. Done checks are the exception: on an open layout with no unsaved changes, they are saved as soon as they are tapped.
+  - The current inputs and checks are also kept on the device automatically, saved or not, so the app comes back where it was after the phone closes it.
 - **Plain-text share:** the Web Share API opens the phone's share sheet (Messages, etc.), with clipboard copy as a fallback. Formatted for a text message:
   ```
   Univ 4 - 1st Elec
@@ -177,7 +182,8 @@ interface Layout {
   simple?: { footprint: number; quantity?: number };
   sequence?: SequenceItem[];
   doneUnits: number[];
-  updatedAt: number;
+  updatedAt: number;      // last saved
+  lastOpenedAt?: number;  // sorts the saved list; optional, so data without it still reads
   schemaVersion: 1;
 }
 
