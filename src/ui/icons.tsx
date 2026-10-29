@@ -28,6 +28,17 @@ export function ResetIcon() {
   );
 }
 
+/** Three lines. */
+export function MenuIcon() {
+  return (
+    <Icon size={26}>
+      <path d="M4 7h16" />
+      <path d="M4 12h16" />
+      <path d="M4 17h16" />
+    </Icon>
+  );
+}
+
 export function UpIcon() {
   return (
     <Icon>

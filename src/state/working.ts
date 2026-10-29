@@ -36,14 +36,17 @@ export interface DraftPattern {
 
 export type DraftItem = DraftBlock | DraftPattern;
 
+/**
+ * One mode's workspace. Each mode has its own, independent of the other (see ./workspace.ts):
+ * its own start, checks, and open saved layout.
+ */
 export interface WorkingState {
   mode: Mode;
-  /** Shared by both modes: the same position in the universe. */
   start: string;
-  // Simple mode.
+  // Simple mode only.
   footprint: string;
   quantity: string;
-  // Advanced mode.
+  // Advanced mode only.
   sequence: DraftItem[];
   /** Advanced mode has been opened, so its first block was seeded from the simple inputs. */
   seeded: boolean;
@@ -64,7 +67,11 @@ export interface Evaluation {
 }
 
 export function initialState(): WorkingState {
-  return { mode: 'simple', start: '1', footprint: '', quantity: '', sequence: [], seeded: false, doneUnits: [] };
+  return initialFor('simple');
+}
+
+export function initialFor(mode: Mode): WorkingState {
+  return { mode, start: '1', footprint: '', quantity: '', sequence: [], seeded: false, doneUnits: [] };
 }
 
 function toNumber(value: string): number | undefined {
@@ -220,17 +227,6 @@ export function setQuantity(state: WorkingState, value: string): WorkingState {
   return { ...next, doneUnits: state.doneUnits.filter((u) => u <= count) };
 }
 
-/** Switching modes changes every address. The first switch to advanced seeds its first block. */
-export function setMode(state: WorkingState, mode: Mode): WorkingState {
-  if (mode === state.mode) return state;
-  const next: WorkingState = { ...state, mode, doneUnits: [] };
-  if (mode === 'advanced' && !state.seeded) {
-    next.seeded = true;
-    next.sequence = [{ ...emptyBlock(), footprint: state.footprint, quantity: state.quantity }];
-  }
-  return next;
-}
-
 // Sequence editing. Ids are unique across the sequence, including inside patterns.
 
 type BlockField = 'label' | 'footprint' | 'quantity';
@@ -352,15 +348,19 @@ export function continueFrom(state: WorkingState): WorkingState {
 
 // Saved layouts.
 
+/**
+ * The workspace for `layout`'s own mode. Only that mode's inputs are read; layouts saved by the
+ * first Phase 4 build may also carry the other mode's, which are ignored.
+ */
 export function openSaved(layout: Layout): WorkingState {
-  const sequence = layout.sequence ? fromSequence(layout.sequence) : [];
+  const simple = layout.mode === 'simple' ? layout.simple : undefined;
   return {
     mode: layout.mode,
     start: String(layout.startAddress),
-    footprint: layout.simple ? String(layout.simple.footprint) : '',
-    quantity: layout.simple?.quantity === undefined ? '' : String(layout.simple.quantity),
-    sequence,
-    seeded: sequence.length > 0,
+    footprint: simple ? String(simple.footprint) : '',
+    quantity: simple?.quantity === undefined ? '' : String(simple.quantity),
+    sequence: layout.mode === 'advanced' && layout.sequence ? fromSequence(layout.sequence) : [],
+    seeded: layout.mode === 'advanced',
     doneUnits: [...layout.doneUnits],
     saved: layout,
   };
@@ -416,21 +416,9 @@ export function hasUnsavedWork(state: WorkingState): boolean {
   return state.mode === 'simple' ? !isBlank(state.footprint) : hasSequenceInput(state.sequence);
 }
 
-function isComplete(sequence: SequenceItem[]): boolean {
-  return (
-    sequence.length > 0 &&
-    sequence.every((item) =>
-      isPattern(item)
-        ? Number.isFinite(item.repeat) && item.blocks.length > 0 && isComplete(item.blocks)
-        : Number.isFinite(item.footprint) && Number.isFinite(item.quantity),
-    )
-  );
-}
-
 /**
  * The Layout to store for a save, under `id` (the open layout's id to overwrite, or a new one).
- * The active mode is valid (Save requires it). The other mode's inputs are kept too when complete,
- * so both survive Save → open.
+ * Only this mode's inputs: a saved layout belongs to one mode and opens into it.
  */
 export function layoutForSave(
   state: WorkingState,
@@ -443,13 +431,6 @@ export function layoutForSave(
     updatedAt: fields.now,
     lastOpenedAt: fields.now,
   };
-  const simple = simpleInputs(state);
-  if (state.mode === 'advanced' && Number.isFinite(simple.footprint) && Number.isFinite(simple.quantity ?? 0)) {
-    layout.simple = simple;
-  }
-  const sequence = toSequence(state.sequence);
-  if (state.mode === 'simple' && isComplete(sequence)) layout.sequence = sequence;
-
   const note = fields.locationNote.trim();
   if (note) layout.locationNote = note;
   else delete layout.locationNote;

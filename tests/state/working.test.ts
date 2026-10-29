@@ -25,7 +25,6 @@ import {
   resetChecks,
   setBlockField,
   setFootprint,
-  setMode,
   setQuantity,
   setRepeat,
   setStart,
@@ -134,37 +133,6 @@ describe('evaluate (advanced)', () => {
     const ev = evaluate(adv([db('a', '10', '1')], '0'));
     expect(ev.errors.startAddress).toBeTruthy();
     expect(ev.status).toBe('Fix the highlighted field');
-  });
-});
-
-describe('mode switch', () => {
-  it('seeds the first advanced block from the simple inputs, once', () => {
-    const s = setMode(state('19', '10', '4'), 'advanced');
-    expect(s.mode).toBe('advanced');
-    expect(s.seeded).toBe(true);
-    expect(s.sequence).toEqual([{ kind: 'block', id: expect.any(String), label: '', footprint: '19', quantity: '4' }]);
-    expect(evaluate(s).result?.placed).toHaveLength(4);
-  });
-
-  it('keeps each mode’s inputs across switches', () => {
-    let s = setMode(state('19'), 'advanced');
-    s = setBlockField(s, s.sequence[0]!.id, 'footprint', '20');
-    s = setMode(s, 'simple');
-    expect(s.footprint).toBe('19');
-    s = setMode(s, 'advanced');
-    expect((s.sequence[0] as DraftBlock).footprint).toBe('20');
-    expect(s.sequence).toHaveLength(1);
-  });
-
-  it('shares the start address', () => {
-    const s = setMode(setStart(state('19'), '100'), 'advanced');
-    expect(s.start).toBe('100');
-  });
-
-  it('clears checks when switching, and does nothing for the same mode', () => {
-    const s = state('19', '1', '', [1]);
-    expect(setMode(s, 'simple')).toBe(s);
-    expect(setMode(s, 'advanced').doneUnits).toEqual([]);
   });
 });
 
@@ -350,12 +318,12 @@ describe('saved layouts', () => {
     expect(isDirty(setFootprint(s, 'abc'))).toBe(true);
   });
 
-  it('is dirty when the sequence or mode changes', () => {
+  it('is dirty when the sequence changes', () => {
     const s = openSaved(savedAdv);
     expect(isDirty(setRepeat(s, 'p', '9'))).toBe(true);
     expect(isDirty(setBlockField(s, 's', 'label', 'Beam'))).toBe(true);
     expect(isDirty(addBlock(s))).toBe(true);
-    expect(isDirty(setMode(s, 'simple'))).toBe(true);
+    expect(isDirty(setStart(s, '2'))).toBe(true);
   });
 
   it('compares values, so "019" over "19" is not dirty', () => {
@@ -413,32 +381,26 @@ describe('saved layouts', () => {
     expect(layoutForSave(s, { id: 'n', name: 'x', locationNote: 'Univ 4', now: 1 }).locationNote).toBe('Univ 4');
   });
 
-  it('keeps the other mode’s inputs in a save when they are complete', () => {
-    const both = { ...spotWash(), footprint: '19' };
-    const fromAdv = layoutForSave(both, { id: 'n', name: 'x', locationNote: '', now: 1 });
+  it('saves only its own mode’s inputs', () => {
+    const fromAdv = layoutForSave({ ...spotWash(), footprint: '19' }, { id: 'n', name: 'x', locationNote: '', now: 1 });
     expect(fromAdv.mode).toBe('advanced');
-    expect(fromAdv.simple).toEqual({ footprint: 19 });
-    expect(fromAdv.sequence).toEqual(toSequence(both.sequence));
-    const fromSimple = layoutForSave({ ...both, mode: 'simple' }, { id: 'n', name: 'x', locationNote: '', now: 1 });
-    expect(fromSimple.sequence).toEqual(toSequence(both.sequence));
+    expect(fromAdv).not.toHaveProperty('simple');
+    expect(fromAdv.sequence).toEqual(toSequence(spotWash().sequence));
+    const fromSimple = layoutForSave({ ...state('19'), sequence: spotWash().sequence }, { id: 'n', name: 'x', locationNote: '', now: 1 });
+    expect(fromSimple).not.toHaveProperty('sequence');
     expect(isStoredLayout(fromAdv)).toBe(true);
     expect(isStoredLayout(fromSimple)).toBe(true);
   });
 
-  it('leaves out the other mode’s inputs when incomplete', () => {
-    const fromAdv = layoutForSave(spotWash(), { id: 'n', name: 'x', locationNote: '', now: 1 });
-    expect(fromAdv).not.toHaveProperty('simple');
-    const fromSimple = layoutForSave({ ...state('19'), sequence: [db('a', '', '1')] }, { id: 'n', name: 'x', locationNote: '', now: 1 });
-    expect(fromSimple).not.toHaveProperty('sequence');
-  });
-
-  it('round-trips both modes through save and open', () => {
-    const both = { ...spotWash(), footprint: '19', quantity: '4' };
-    const opened = openSaved(layoutForSave(both, { id: 'n', name: 'x', locationNote: '', now: 1 }));
+  it('opens only its own mode’s inputs, ignoring the other mode in older saves', () => {
+    const olderSave = { ...savedAdv, simple: { footprint: 19, quantity: 4 } };
+    const opened = openSaved(olderSave);
     expect(opened.mode).toBe('advanced');
-    expect([opened.footprint, opened.quantity]).toEqual(['19', '4']);
-    expect(toSequence(opened.sequence)).toEqual(toSequence(both.sequence));
+    expect([opened.footprint, opened.quantity]).toEqual(['', '']);
+    expect(toSequence(opened.sequence)).toEqual(savedAdv.sequence);
     expect(isDirty(opened)).toBe(false);
+    const olderSimple = openSaved({ ...saved, sequence: savedAdv.sequence! });
+    expect(olderSimple.sequence).toEqual([]);
   });
 
   it('overwriting clears a removed location note', () => {

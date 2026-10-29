@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'preact/hooks';
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import type { Layout } from '../engine';
 import { putLayout } from '../storage/layouts';
-import { loadWorkingState, saveWorkingState } from '../storage/working';
+import { loadWorkspace, saveWorkspace } from '../storage/working';
 import {
   blockColors,
   checksAutosave,
@@ -9,66 +9,80 @@ import {
   describeSequence,
   detach,
   evaluate,
-  initialState,
   isDirty,
   markSaved,
-  openSaved,
   reset,
   resetChecks,
   setFootprint,
-  setMode,
   setQuantity,
   setStart,
   toggleDone,
-  type Mode,
   type WorkingState,
 } from '../state/working';
+import {
+  activeState,
+  initialWorkspace,
+  openLayout,
+  switchMode,
+  updateActive,
+  updateOpen,
+  type Workspace,
+} from '../state/workspace';
 import { NumberField } from './fields';
-import { ResetIcon } from './icons';
+import { MenuIcon, ResetIcon } from './icons';
 import { LayoutsPanel } from './LayoutsPanel';
+import { Menu } from './Menu';
 import { SequenceEditor } from './SequenceEditor';
 import { SummaryLines } from './SummaryLines';
 import { UnitTable } from './UnitTable';
 import { usePanel } from './usePanel';
 import { useUpdateNotice } from './useUpdateNotice';
 
-function ModeSwitch({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
-  return (
-    <div class="mode-switch" role="group" aria-label="Mode">
-      {(['simple', 'advanced'] as const).map((m) => (
-        <button type="button" key={m} aria-pressed={mode === m} onClick={() => onChange(m)}>
-          {m === 'simple' ? 'Simple' : 'Advanced'}
-        </button>
-      ))}
-    </div>
-  );
+/** Keeps --bar-h at the sticky bar's height, so the table's header row can stick right under it. */
+function useBarHeight() {
+  const bar = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = bar.current;
+    if (!el) return;
+    const set = () => document.documentElement.style.setProperty('--bar-h', `${el.offsetHeight}px`);
+    set();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(set);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+  return bar;
 }
 
 export function App() {
-  const [state, setState] = useState<WorkingState>(() => loadWorkingState() ?? initialState());
-  const { panel, open, close } = usePanel();
+  const [workspace, setWorkspace] = useState<Workspace>(() => loadWorkspace() ?? initialWorkspace());
+  const { panel, open, switchTo, close } = usePanel();
   const { needRefresh, updating, reload } = useUpdateNotice();
+  const bar = useBarHeight();
 
   const pendingCheckSave = useRef<Layout | null>(null);
 
   // Kept on the device, saved or not, so a relaunch comes back where the user was.
   useEffect(() => {
-    saveWorkingState(state);
+    saveWorkspace(workspace);
     if (pendingCheckSave.current) {
       putLayout(pendingCheckSave.current).catch(() => {});
       pendingCheckSave.current = null;
     }
-  }, [state]);
+  }, [workspace]);
 
+  const state = activeState(workspace);
   const evaluation = evaluate(state);
   const { errors, result, layout } = evaluation;
   const dirty = isDirty(state);
   const advanced = state.mode === 'advanced';
 
+  /** Changes the active mode's state. setWorkspace(fn), so taps that land before a re-render all apply. */
+  const update = (change: (s: WorkingState) => WorkingState) => setWorkspace((ws) => updateActive(ws, change));
+
   /** Check changes on an open, unmodified saved layout are written to it after the render. */
   function changeChecks(change: (s: WorkingState) => WorkingState) {
-    // setState(fn), so taps that land before a re-render all apply.
-    setState((s) => {
+    update((s) => {
       const next = change(s);
       if (!checksAutosave(next)) return next;
       const saved: Layout = { ...next.saved!, doneUnits: next.doneUnits };
@@ -87,19 +101,17 @@ export function App() {
     return (
       <div class="app">
         <LayoutsPanel
-          state={state}
+          workspace={workspace}
           onBack={close}
           onOpen={(opened) => {
-            setState(() => openSaved(opened));
+            setWorkspace((ws) => openLayout(ws, opened));
             close();
           }}
           onSaved={(saved) => {
-            setState((s) => markSaved(s, saved));
+            update((s) => markSaved(s, saved));
             close();
           }}
-          onDeleted={(id) => {
-            setState((s) => (s.saved?.id === id ? detach(s) : s));
-          }}
+          onDeleted={(id) => setWorkspace((ws) => updateOpen(ws, id, detach))}
         />
         {updateNotice}
       </div>
@@ -109,7 +121,7 @@ export function App() {
   if (panel === 'editor' && advanced) {
     return (
       <div class="app">
-        <SequenceEditor state={state} update={setState} onBack={close} />
+        <SequenceEditor state={state} update={update} onBack={close} />
         {updateNotice}
       </div>
     );
@@ -125,14 +137,12 @@ export function App() {
           {state.saved?.locationNote && <p class="app-meta">{state.saved.locationNote}</p>}
         </div>
         <div class="header-actions">
-          <button type="button" class="button" onClick={() => open('layouts')}>
-            Layouts
+          <button type="button" class="icon-button" aria-label="Menu" aria-haspopup="dialog" onClick={() => open('menu')}>
+            <MenuIcon />
           </button>
           {dirty && <span class="unsaved">Unsaved changes</span>}
         </div>
       </header>
-
-      <ModeSwitch mode={state.mode} onChange={(m) => setState((s) => setMode(s, m))} />
 
       <form class={advanced ? 'inputs inputs-advanced' : 'inputs'} onSubmit={(e) => e.preventDefault()}>
         {!advanced && (
@@ -140,7 +150,7 @@ export function App() {
             id="footprint"
             label="Footprint"
             value={state.footprint}
-            onInput={(v) => setState((s) => setFootprint(s, v))}
+            onInput={(v) => update((s) => setFootprint(s, v))}
             error={errors.footprint}
           />
         )}
@@ -148,7 +158,7 @@ export function App() {
           id="start"
           label="Start"
           value={state.start}
-          onInput={(v) => setState((s) => setStart(s, v))}
+          onInput={(v) => update((s) => setStart(s, v))}
           error={errors.startAddress}
         />
         {!advanced && (
@@ -156,7 +166,7 @@ export function App() {
             id="quantity"
             label="Quantity"
             value={state.quantity}
-            onInput={(v) => setState((s) => setQuantity(s, v))}
+            onInput={(v) => update((s) => setQuantity(s, v))}
             error={errors.quantity}
             placeholder="Fill"
           />
@@ -181,18 +191,14 @@ export function App() {
           <span class="field-label-spacer" aria-hidden="true">
             &nbsp;
           </span>
-          <button type="button" class="icon-button icon-button-tall" aria-label="Reset" title="Reset" onClick={() => setState(reset)}>
+          <button type="button" class="icon-button icon-button-tall" aria-label="Reset" title="Reset" onClick={() => update(reset)}>
             <ResetIcon />
           </button>
         </div>
       </form>
 
-      <div class="sticky-bar">
-        <SummaryLines
-          evaluation={evaluation}
-          onContinue={() => setState((s) => continueFrom(s))}
-          {...(state.doneUnits.length > 0 ? { onResetChecks: () => changeChecks(resetChecks) } : {})}
-        />
+      <div class="sticky-bar" ref={bar}>
+        <SummaryLines evaluation={evaluation} onContinue={() => update(continueFrom)} />
       </div>
 
       {result && result.placed.length > 0 && (
@@ -200,11 +206,24 @@ export function App() {
           placed={result.placed}
           doneUnits={state.doneUnits}
           onToggle={(unit) => changeChecks((s) => toggleDone(s, unit))}
+          onClear={() => changeChecks(resetChecks)}
           {...(advanced ? { colors: blockColors(layout.sequence ?? []) } : {})}
         />
       )}
 
       <footer class="app-footer">v{__APP_VERSION__}</footer>
+
+      {panel === 'menu' && (
+        <Menu
+          mode={state.mode}
+          onMode={(m) => {
+            setWorkspace((ws) => switchMode(ws, m));
+            close();
+          }}
+          onLayouts={() => switchTo('layouts')}
+          onClose={close}
+        />
+      )}
 
       {updateNotice}
     </div>

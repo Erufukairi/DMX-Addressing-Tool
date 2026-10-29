@@ -9,11 +9,12 @@ import {
   layoutForSave,
   sortByLastOpened,
   suggestName,
-  type WorkingState,
+
 } from '../state/working';
+import { activeState, type Workspace } from '../state/workspace';
 
 interface LayoutsPanelProps {
-  state: WorkingState;
+  workspace: Workspace;
   onBack: () => void;
   onOpen: (layout: Layout) => void;
   onSaved: (layout: Layout) => void;
@@ -21,7 +22,8 @@ interface LayoutsPanelProps {
 }
 
 /** Save, open, and delete layouts (design doc §5.4). Edits to an open layout need an explicit Save. */
-export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: LayoutsPanelProps) {
+export function LayoutsPanel({ workspace, onBack, onOpen, onSaved, onDeleted }: LayoutsPanelProps) {
+  const state = activeState(workspace);
   const [layouts, setLayouts] = useState<Layout[] | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [name, setName] = useState(() => state.saved?.name ?? suggestName(state));
@@ -48,7 +50,9 @@ export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: Layo
   }
 
   function openLayout(layout: Layout) {
-    if (hasUnsavedWork(state) && !window.confirm('Discard your unsaved changes?')) return;
+    // Opening replaces only the layout's own mode, so only that mode's work is at stake.
+    const target = workspace[layout.mode];
+    if (hasUnsavedWork(target) && !window.confirm(`Discard your unsaved ${layout.mode} changes?`)) return;
     const opened = { ...layout, lastOpenedAt: Date.now() };
     putLayout(opened).catch(() => {});
     onOpen(opened);
@@ -81,7 +85,7 @@ export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: Layo
           void save(false);
         }}
       >
-        <h2>{open ? `Save "${open.name}"` : 'Save current layout'}</h2>
+        <h2>{open ? `Save "${open.name}"` : `Save current ${state.mode} layout`}</h2>
         <label class="text-field">
           <span>Name</span>
           <input type="text" value={name} onInput={(e) => setName(e.currentTarget.value)} autoComplete="off" />
@@ -96,7 +100,11 @@ export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: Layo
             autoComplete="off"
           />
         </label>
-        {!canSave && <p class="hint">Enter a valid footprint and start address to save.</p>}
+        {!canSave && (
+          <p class="hint">
+            {state.mode === 'simple' ? 'Enter a valid footprint and start address to save.' : 'Finish the sequence to save.'}
+          </p>
+        )}
         <div class="button-row">
           <button type="submit" class="button button-primary" disabled={!canSave || name.trim() === ''}>
             Save
@@ -120,15 +128,18 @@ export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: Layo
         <h2>Saved</h2>
         {layouts?.length === 0 && (
           <p class="hint">
-            Nothing saved yet. Saved layouts keep their inputs and done checks. Changes to an open layout are kept
+            Nothing saved yet. Each saved layout belongs to one mode and opens into it, keeping its inputs and done checks. Changes to an open layout are kept
             only when you tap Save.
           </p>
         )}
         <ul>
           {layouts?.map((layout) => (
-            <li key={layout.id} class={layout.id === open?.id ? 'is-open' : undefined}>
+            <li key={layout.id} class={layout.id === workspace[layout.mode].saved?.id ? 'is-open' : undefined}>
               <button type="button" class="saved-open" onClick={() => openLayout(layout)}>
-                <span class="saved-name">{layout.name}</span>
+                <span class="saved-name">
+                  {layout.name}
+                  <span class="mode-tag">{layout.mode === 'simple' ? 'Simple' : 'Advanced'}</span>
+                </span>
                 {layout.locationNote && <span class="saved-note">{layout.locationNote}</span>}
                 <span class="saved-desc">{describeLayout(layout)}</span>
               </button>

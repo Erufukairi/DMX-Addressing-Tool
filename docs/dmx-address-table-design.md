@@ -90,7 +90,7 @@ remaining     = 512 − nextAddress + 1             // addresses left
 If `nextAddress > 512`, then `remaining = 0` and there is no next address.
 
 ### Summary
-Two short lines, not one wrapped line. Terse on purpose: the readers are lighting techs, who know what the numbers mean. Once learned, it reads at a glance.
+Two short lines, set tight like one wrapped line, with the Continue button centered beside both. Terse on purpose: the readers are lighting techs, who know what the numbers mean. Once learned, it reads at a glance.
 
 | Case | Line 1 (units) | Line 2 (addresses) |
 |---|---|---|
@@ -139,18 +139,19 @@ Output:
 
 Block list interactions: add, duplicate, delete, and reorder with up/down buttons. Patterns hold blocks only; a block isn't moved into or out of a pattern. (Drag-to-reorder and collapse were dropped in Phase 4 planning: up/down covers reordering, and collapse matters little on a dedicated edit screen.)
 
-**Modes.** Each mode keeps its own inputs, so switching loses nothing; the start address is shared. The first time advanced mode is opened, its first block is filled from the simple footprint and quantity.
+**Modes.** Simple and advanced are fully independent workspaces, like two tabs: each has its own start address, inputs, done checks, and open saved layout, and switching never changes the other. The switch is in the menu (§5.5). The first time advanced mode is opened, its start and first block are filled from the simple inputs.
 
 ### 5.3 Field Usability
 - Dark theme by default. Include a light theme and a red "night" theme.
 - Minimum 48px touch targets and large table text.
 - **Tap a row to mark it done** (checkmark plus dimmed row) while walking the pipe. Done-state is saved with the layout and has a "Reset checks" action.
   - The point is not losing your place while moving between fixtures, not tracking progress. So there is no "x of y done" count, and neither Reset checks nor Reset asks for confirmation.
-  - **To be decided:** where Reset checks lives. Candidates: the bottom of the table, or a small "Clear" in line with the table's column labels. For now (Phase 4) it is a small button at the right end of the summary's first line, which needs no line of its own.
+  - Reset checks is a small **Clear** in the table's header row, shown while anything is checked. The header row sticks under the summary, so Clear and the column labels stay in view while scrolling.
 - Screen wake lock toggle, where supported.
 
 ### 5.4 Save, Share, Export
 - **Saved layouts:** each has a name. The list is sorted by last opened. Each layout includes an optional free-text **location note**, e.g. "Univ 4 - 1st Elec". This is the only place universe information appears, and the app treats it as plain text with no meaning.
+  - Each saved layout belongs to one mode: it holds only that mode's inputs, is tagged Simple or Advanced in the list, and opens into its own mode without touching the other.
   - Changes to an open layout's inputs are kept only when the user taps Save; the header shows "Unsaved changes" until then. Done checks are the exception: on an open layout with no unsaved changes, they are saved as soon as they are tapped.
   - The current inputs and checks are also kept on the device automatically, saved or not, so the app comes back where it was after the phone closes it.
 - **Plain-text share:** the Web Share API opens the phone's share sheet (Messages, etc.), with clipboard copy as a fallback. Formatted for a text message:
@@ -165,6 +166,14 @@ Block list interactions: add, duplicate, delete, and reorder with up/down button
   ```
   Simple mode omits the labels: `1: 1`, `2: 20`, …
 - **JSON app-to-app:** export one layout or all layouts as a `.json` file, sent through the share sheet or a download. Importing a file adds layouts and never overwrites existing ones. The same mechanism also serves as the backup for the iOS storage caveat.
+
+### 5.5 Menu
+A hamburger button at the top right opens a menu sheet over the table. It replaces the separate Layouts button and mode switch, which took too much screen space.
+- **Mode switch** (Simple | Advanced) at the top of the menu.
+- **Open** and **Save.** For now both go to the same Layouts page; separate them in Phase 6.
+- **Share** (Phase 5), **Backup** (JSON export/import, Phase 5), and **Settings** (Phase 6) join the menu as they're built. Nothing appears before it works.
+- The "Unsaved changes" marker sits under the menu button.
+- Tapping outside the sheet, Escape, or the phone's Back gesture closes it.
 
 ## 6. Data Model (TypeScript)
 
@@ -338,6 +347,7 @@ Each phase should end with a working, deployable build.
 - **Reserved address ranges**, e.g. skipping 1–24 for house dimmers. It's unclear whether the usefulness justifies the added complexity.
 - **Help screen or short tutorial** explaining the terse summary and icon buttons, if it makes everyday use more fluid. The terse UI is meant to be learned once.
 - **Continue as an icon** instead of "Next 505 →", if a clear icon turns up.
+- **Advanced editor as a unit list.** An alternative to the block/pattern cards: a list of the units themselves, populated from a pattern, added one at a time, or reordered by hand. The cards work well; whether the list would be better needs hands-on testing, possibly on a separate branch with its own preview URL.
 
 ## 10. Out of Scope
 

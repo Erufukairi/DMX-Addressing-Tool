@@ -6,14 +6,17 @@ interface UnitTableProps {
   onToggle: (unit: number) => void;
   /** Advanced mode: color slot (1–6) per block id. Adds the Label column. */
   colors?: Map<string, number>;
+  /** Clears the done checks; the button shows in the header row while any are checked (design doc §5.3). */
+  onClear: () => void;
 }
 
 /**
- * Unit # | Address (simple) or Unit # | Label | Address (advanced), large text.
+ * Unit # | Address (simple) or Unit # | Label | Address (advanced), large text. The header row
+ * sticks under the summary bar (top: --bar-h, measured by App) and holds Clear for the done checks.
  * Tapping anywhere on a row marks it done (design doc §5.3). The handler is on the row; the address
  * cell's button only makes the row reachable by keyboard and screen readers, and its click bubbles.
  */
-export function UnitTable({ placed, doneUnits, onToggle, colors }: UnitTableProps) {
+export function UnitTable({ placed, doneUnits, onToggle, colors, onClear }: UnitTableProps) {
   const done = new Set(doneUnits);
   return (
     <table class={colors ? 'units units-labeled' : 'units'}>
@@ -25,7 +28,16 @@ export function UnitTable({ placed, doneUnits, onToggle, colors }: UnitTableProp
               Label
             </th>
           )}
-          <th scope="col">Address</th>
+          <th scope="col">
+            <span class="th-address">
+              {done.size > 0 && (
+                <button type="button" class="clear-checks" aria-label="Clear done checks" onClick={onClear}>
+                  ✓ Clear
+                </button>
+              )}
+              Address
+            </span>
+          </th>
         </tr>
       </thead>
       <tbody>

@@ -22,9 +22,16 @@ Scope:
 Where the implementation differs from the plan below:
 
 - **No separate Edit button.** The sequence description is itself the edit button: a field-styled button showing e.g. "[Spot 19, Wash 14] ×8" with "Edit" at its right end. A separate button left about 100px for the description on a phone.
-- **Reset checks** is a small button at the right end of summary line 1, which had spare room, so it needs no line of its own. Its final home is still to be decided (design doc §5.3).
 - **`--warning`** is the same red as `--error` for now, as its own token so themes can split them.
-- **Mode switch** is a full-width Simple | Advanced segmented control under the header.
+
+Revised after the first Phase 4 deploy (`dd7ea27`), from the user's field testing:
+
+- **Modes are fully independent workspaces** (`src/state/workspace.ts`): each mode has its own start, inputs, checks, and open saved layout. This replaces "start shared" and one shared open layout. Saved layouts hold only their own mode's inputs, are tagged Simple or Advanced in the list, and open into their own mode. Layouts saved by `dd7ea27` may carry both modes' inputs; only their own mode is read.
+- **Persisted state** moved to `dmx.workspace.v3`. `dmx.working.v2` (first Phase 4 build) and `dmx.working.v1` (Phase 3) are converted on first load.
+- **Hamburger menu** (design doc §5.5) replaces the Layouts button and the mode switch, which took a full row. Open and Save both go to the Layouts page for now.
+- **Summary** lines are set tight, with **Next N →** centered beside both.
+- **Reset checks** is a small **✓ Clear** in the table's header row, which now sticks under the summary bar (its `top` is the bar's height, measured into `--bar-h`).
+- **Advanced editor as a unit list** is recorded as an idea to try (design doc §9), possibly on a branch.
 - Verified with a scratch browser-driving script (40 checks, served build and `file://` single-file build), covering the v1 → v2 conversion, the simple-mode refinements, the editor, overflow, mode switching, and save/open/edit of an advanced layout.
 - The user is collecting more UI ideas from field use and will raise them later. Don't anticipate them.
 
