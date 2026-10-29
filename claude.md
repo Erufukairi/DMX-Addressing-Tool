@@ -1,0 +1,4 @@
+- Read docs/dmx-address-table-design.md before any work
+- follow the build phases in order
+- keep dependencies minimal
+- run npm test before calling a phase done
