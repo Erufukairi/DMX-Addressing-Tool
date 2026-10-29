@@ -89,14 +89,20 @@ remaining     = 512 − nextAddress + 1             // addresses left
 ```
 If `nextAddress > 512`, then `remaining = 0` and there is no next address.
 
-### Summary line
-Format: **"21 units · 8 addr left, next 505"** (footprint 24 from 1)
+### Summary
+Two short lines, not one wrapped line. Terse on purpose: the readers are lighting techs, who know what the numbers mean. Once learned, it reads at a glance.
 
-Terse on purpose: the readers are lighting techs, who know what the numbers mean.
+| Case | Line 1 (units) | Line 2 (addresses) |
+|---|---|---|
+| Normal (footprint 24 from 1) | 21 units | 8 addr left · button **Next 505 →** |
+| Universe filled exactly | 32 units | universe full (no button) |
+| Quantity entered, some didn't fit | **21 of 24 units**, in the warning color | 8 addr left · button **Next 505 →** |
+| Nothing fits (footprint 512 from 2) | No units fit, in the warning color | 511 addr left |
 
-- If the universe is filled exactly: "32 units · universe full".
-- If a quantity was entered and some fixtures didn't fit: "21 of 24 units · 3 didn't fit · 8 addr left, next 505".
-- If nothing fits: "No units fit · 511 addr left from 2".
+- A shortfall is shown by "x of y" and the color, without a separate "n didn't fit".
+- The next address is not part of the text. It is the label of the Continue button (§5.1), with an arrow implying "go".
+
+> **Status:** decided after field use of Phase 3, not yet implemented. Phase 3 shipped a single line, "21 units · 8 addr left, next 505", with a separate Continue button.
 
 ## 5. Features
 
@@ -112,8 +118,8 @@ Output:
 - Results update live as the user types. There is no Calculate button.
 
 Actions:
-- **Reset** clears all three fields to their defaults: footprint blank, start address 1, quantity blank.
-- **Continue from next address**, a button at the end of the summary line. It sets the start address to the summary's next address and clears footprint and quantity, ready for the next fixture type on the same universe. It shows only when there is a next address, so it is hidden when the universe is full or the inputs have errors.
+- **Reset**, an icon at the right end of the input row. It clears all three fields to their defaults (footprint blank, start address 1, quantity blank) and clears done checks, without asking.
+- **Continue**, labelled **Next 505 →**, beside the summary's second line (§4). It sets the start address to the next address and clears footprint and quantity, ready for the next fixture type on the same universe. It shows only when there is a next address, so it is hidden when the universe is full or the inputs have errors.
 
 ### 5.2 Advanced Mode (sequence builder)
 For mixed or interleaved rigs. The user builds an ordered list of **blocks**:
@@ -136,6 +142,8 @@ Block list interactions: add, duplicate, delete, reorder (drag handle plus up/do
 - Dark theme by default. Include a light theme and a red "night" theme.
 - Minimum 48px touch targets and large table text.
 - **Tap a row to mark it done** (checkmark plus dimmed row) while walking the pipe. Done-state is saved with the layout and has a "Reset checks" action.
+  - The point is not losing your place while moving between fixtures, not tracking progress. So there is no "x of y done" count, and neither Reset checks nor Reset asks for confirmation.
+  - **To be decided:** where Reset checks lives. It currently takes a line of its own in the sticky bar, which is a line too many. Candidates: the bottom of the table, or a small "Clear" in line with the table's column labels.
 - Screen wake lock toggle, where supported.
 
 ### 5.4 Save, Share, Export
@@ -308,6 +316,8 @@ Simple mode actions from §5.1: Reset, and Continue from next address.
 
 Block editor, patterns with repeat, labels and colors.
 
+Also the simple-mode refinements decided after Phase 3 field use: the two-line summary (§4), the **Next 505 →** Continue button and no-confirm Reset (§5.1), and dropping the done count (§5.3). They come first, since advanced mode shares the summary and table.
+
 ### Phase 5 — Share & transfer
 
 Plain-text share sheet with clipboard fallback; JSON export and import.
@@ -321,6 +331,8 @@ Each phase should end with a working, deployable build.
 ## 9. Deferred — revisit after field use
 
 - **Reserved address ranges**, e.g. skipping 1–24 for house dimmers. It's unclear whether the usefulness justifies the added complexity.
+- **Help screen or short tutorial** explaining the terse summary and icon buttons, if it makes everyday use more fluid. The terse UI is meant to be learned once.
+- **Continue as an icon** instead of "Next 505 →", if a clear icon turns up.
 
 ## 10. Out of Scope
 
