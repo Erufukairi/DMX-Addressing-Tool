@@ -28,7 +28,18 @@ function applyUpdate(registration: ServiceWorkerRegistration | undefined) {
   setTimeout(reload, 3000);
 }
 
-/** Service worker updates: prompt, never auto-reload mid-job (phase-2-plan §2). */
+/**
+ * Running as the installed app. In a browser tab the notice did nothing when tapped (Firefox desktop,
+ * iOS Safari), and tabs pick up the new version anyway the next time they're reopened.
+ */
+function isStandalone(): boolean {
+  return (
+    window.matchMedia?.('(display-mode: standalone)').matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
+}
+
+/** Service worker updates: prompt, never auto-reload mid-job (phase-2-plan §2). Installed app only. */
 export function useUpdateNotice() {
   const registration = useRef<ServiceWorkerRegistration | undefined>(undefined);
   const [updating, setUpdating] = useState(false);
@@ -50,5 +61,5 @@ export function useUpdateNotice() {
     setUpdating(true);
     applyUpdate(registration.current);
   };
-  return { needRefresh, updating, reload };
+  return { needRefresh: needRefresh && isStandalone(), updating, reload };
 }

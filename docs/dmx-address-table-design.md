@@ -47,7 +47,7 @@ Earlier apps like this one died because they went unmaintained and stopped runni
 **Service worker safety**
 - The app shell uses a network-first or stale-while-revalidate update strategy, so a fixed release reaches users on their next online launch.
 - Ship a documented **kill-switch** procedure: a replacement service worker that unregisters itself and clears caches. This is the recovery path if a bad release gets cached.
-- Show the app version in the UI. Show an "update available, tap to reload" notice when a new version is waiting.
+- Show the app version in the UI. In the installed app, show an "update available, tap to reload" notice when a new version is waiting. A browser tab doesn't show it: tapping it there did nothing (Firefox desktop, iOS Safari), and a tab picks up the new version the next time it's reopened.
 
 **Dependency discipline**
 - Use as few runtime dependencies as possible: Preact (or none), `idb-keyval`, and nothing else without justification.
@@ -101,8 +101,7 @@ Two short lines, not one wrapped line. Terse on purpose: the readers are lightin
 
 - A shortfall is shown by "x of y" and the color, without a separate "n didn't fit".
 - The next address is not part of the text. It is the label of the Continue button (§5.1), with an arrow implying "go".
-
-> **Status:** decided after field use of Phase 3, not yet implemented. Phase 3 shipped a single line, "21 units · 8 addr left, next 505", with a separate Continue button.
+- Advanced mode adds per-label counts to line 1 when more than one label is used, e.g. "16 units · 8 Spot, 8 Wash", or "30 of 40 units · 15 of 20 Spot, 15 of 20 Wash" on overflow (§5.2).
 
 ## 5. Features
 
@@ -133,17 +132,21 @@ Blocks are packed end-to-end from the start address. Unit # runs continuously ac
 
 Output:
 - **Summary line.** Same format as simple mode. Add a short per-label count if more than one label is used, e.g. "8 Spot, 8 Wash".
-- **Table columns:** Unit # | Label | Address. Rows are color-coded per block.
+- **Table columns:** Unit # | Label | Address. Rows are color-coded by label: blocks with the same label share a color wherever they appear, and unlabeled blocks each get their own. Color is a stripe plus the label's text color, never the only cue.
 - **Overflow.** If a fixture won't fit, placement stops there and the summary reports how many fixtures from which blocks didn't fit.
 
-Block list interactions: add, duplicate, delete, reorder (drag handle plus up/down buttons), and collapse.
+**Editing.** The blocks are edited on a separate full-screen edit screen, so the main screen keeps the same shape in both modes. There, the start field sits beside a one-line description of the sequence, e.g. "[Spot 19, Wash 14] ×8", which opens the editor when tapped. Edits apply live; Back returns to the table.
+
+Block list interactions: add, duplicate, delete, and reorder with up/down buttons. Patterns hold blocks only; a block isn't moved into or out of a pattern. (Drag-to-reorder and collapse were dropped in Phase 4 planning: up/down covers reordering, and collapse matters little on a dedicated edit screen.)
+
+**Modes.** Each mode keeps its own inputs, so switching loses nothing; the start address is shared. The first time advanced mode is opened, its first block is filled from the simple footprint and quantity.
 
 ### 5.3 Field Usability
 - Dark theme by default. Include a light theme and a red "night" theme.
 - Minimum 48px touch targets and large table text.
 - **Tap a row to mark it done** (checkmark plus dimmed row) while walking the pipe. Done-state is saved with the layout and has a "Reset checks" action.
   - The point is not losing your place while moving between fixtures, not tracking progress. So there is no "x of y done" count, and neither Reset checks nor Reset asks for confirmation.
-  - **To be decided:** where Reset checks lives. It currently takes a line of its own in the sticky bar, which is a line too many. Candidates: the bottom of the table, or a small "Clear" in line with the table's column labels.
+  - **To be decided:** where Reset checks lives. Candidates: the bottom of the table, or a small "Clear" in line with the table's column labels. For now (Phase 4) it is a small button at the right end of the summary's first line, which needs no line of its own.
 - Screen wake lock toggle, where supported.
 
 ### 5.4 Save, Share, Export
@@ -325,6 +328,8 @@ Plain-text share sheet with clipboard fallback; JSON export and import.
 ### Phase 6 — Polish
 
 Red night theme, wake lock, iOS install hint, accessibility pass.
+
+The red night theme needs its own answer for advanced mode's block colors, which are deliberately not red-only.
 
 Each phase should end with a working, deployable build.
 

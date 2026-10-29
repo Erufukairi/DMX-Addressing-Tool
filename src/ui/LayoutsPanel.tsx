@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import type { Layout } from '../engine';
-import { deleteLayout, listLayouts, newLayoutId, putLayout } from '../storage/layouts';
+import { deleteLayout, listLayouts, putLayout } from '../storage/layouts';
+import { newId } from '../state/ids';
 import {
   describeLayout,
   evaluate,
@@ -36,7 +37,7 @@ export function LayoutsPanel({ state, onBack, onOpen, onSaved, onDeleted }: Layo
   const open = state.saved;
 
   async function save(asNew: boolean) {
-    const id = open && !asNew ? open.id : newLayoutId();
+    const id = open && !asNew ? open.id : newId();
     const layout = layoutForSave(state, { id, name, locationNote: note, now: Date.now() });
     try {
       await putLayout(layout);

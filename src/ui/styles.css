@@ -9,7 +9,17 @@
   --accent: #ffb020;
   --accent-text: #121417;
   --error: #ff6b6b;
+  /* Shortfalls ("21 of 24 units"): an input problem, so the same red for now; themes can split them. */
+  --warning: #ff6b6b;
   --row-alt: #171a1e;
+
+  /* Advanced-mode block colors, by label (phase-4-plan). Always paired with the label text. */
+  --block-1: #4dabf7;
+  --block-2: #69db7c;
+  --block-3: #f783ac;
+  --block-4: #ffd43b;
+  --block-5: #b197fc;
+  --block-6: #ff922b;
 
   --touch: 48px;
   --radius: 10px;
@@ -133,14 +143,93 @@ body {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 52px;
-  min-height: 64px;
+  width: var(--touch);
+  height: var(--touch);
   padding: 0;
   border: 2px solid var(--border);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text-muted);
   cursor: pointer;
+}
+
+.icon-button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Same height as the big input fields. */
+.icon-button-tall {
+  width: 52px;
+  height: auto;
+  min-height: 64px;
+}
+
+.icon-danger {
+  color: var(--error);
+}
+
+.inputs-advanced {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+}
+
+.sequence-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sequence-problem {
+  border-color: var(--warning);
+}
+
+.sequence-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sequence-edit {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin-bottom: 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.mode-switch button {
+  min-height: var(--touch);
+  border: 0;
+  background: var(--surface);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mode-switch button[aria-pressed='true'] {
+  background: var(--surface-raised);
+  color: var(--accent);
 }
 
 .header-actions {
@@ -196,37 +285,51 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
-.bar-row {
+/* Two-line summary (design doc §4). Each line keeps its button at the right end. */
+
+.summary-line {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  min-height: var(--touch);
 }
 
-.bar-row + .bar-row {
-  margin-top: 8px;
-}
-
-.bar-row-end {
-  justify-content: flex-end;
-}
-
-.summary {
-  flex: 1;
+.summary-line p {
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
+}
+
+.summary-units {
+  font-size: 20px;
+  font-weight: 700;
   color: var(--accent);
 }
 
-.summary-idle {
-  color: var(--text-muted);
-  font-weight: 400;
+.summary-short {
+  color: var(--warning);
 }
 
-.done-count {
-  color: var(--text-muted);
+.summary-labels {
+  color: var(--text);
   font-size: 16px;
+  font-weight: 600;
+}
+
+.summary-addresses {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.summary-idle {
+  margin: 0;
+  min-height: var(--touch);
+  color: var(--text-muted);
+}
+
+.button-small {
+  padding: 4px 12px;
+  font-size: 14px;
   white-space: nowrap;
 }
 
@@ -268,6 +371,28 @@ body {
 .units .address {
   font-size: 28px;
   font-weight: 700;
+}
+
+/* Advanced mode: Label column and the block color stripe. */
+
+.units-labeled .unit {
+  width: 22%;
+}
+
+.units .label-col,
+.units .label {
+  text-align: left;
+}
+
+.units .label {
+  color: var(--row-color, var(--text));
+  font-size: 18px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.units .unit-colored {
+  box-shadow: inset 5px 0 0 var(--row-color);
 }
 
 .units tbody tr {
@@ -467,4 +592,92 @@ body {
   font-weight: 700;
   box-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
   cursor: pointer;
+}
+
+/* Sequence editor (advanced mode) */
+
+.card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.card {
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.block-card {
+  border-left: 5px solid var(--row-color, var(--border));
+}
+
+.pattern-card {
+  border: 2px solid var(--border);
+  background: var(--bg);
+}
+
+.pattern-card .block-card {
+  background: var(--surface);
+}
+
+.block-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+.field-compact label {
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+.field-compact input {
+  min-height: var(--touch);
+  font-size: 20px;
+}
+
+.field-text input {
+  font-weight: 400;
+}
+
+.item-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pattern-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pattern-head h3 {
+  margin: 0 0 12px;
+  color: var(--text-muted);
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.pattern-head .field {
+  width: 110px;
+}
+
+.pattern-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.editor-add {
+  margin-top: 16px;
 }

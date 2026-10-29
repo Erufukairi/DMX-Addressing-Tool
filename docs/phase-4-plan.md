@@ -15,7 +15,17 @@ Scope:
   - Relaunch restore.
   - Unsaved-changes behavior.
   - Reset and Continue.
-- **Update banner in a browser tab:** the banner shows, but tapping it does nothing. It works in the installed app. Fixed in step 1 below.
+- **Update banner in a browser tab:** the banner shows, but tapping it does nothing (seen in Firefox on desktop and Safari on iOS). It works in the installed app. Fixed in step 1 below.
+
+## As built
+
+Where the implementation differs from the plan below:
+
+- **No separate Edit button.** The sequence description is itself the edit button: a field-styled button showing e.g. "[Spot 19, Wash 14] ×8" with "Edit" at its right end. A separate button left about 100px for the description on a phone.
+- **Reset checks** is a small button at the right end of summary line 1, which had spare room, so it needs no line of its own. Its final home is still to be decided (design doc §5.3).
+- **`--warning`** is the same red as `--error` for now, as its own token so themes can split them.
+- **Mode switch** is a full-width Simple | Advanced segmented control under the header.
+- Verified with a scratch browser-driving script (40 checks, served build and `file://` single-file build), covering the v1 → v2 conversion, the simple-mode refinements, the editor, overflow, mode switching, and save/open/edit of an advanced layout.
 - The user is collecting more UI ideas from field use and will raise them later. Don't anticipate them.
 
 ## Decisions made while planning
