@@ -10,8 +10,8 @@ See the [design document](docs/dmx-address-table-design.md) for scope, domain ru
 
 ## Use it
 
-- **GitHub Pages:** _URL to be added_
-- **Cloudflare Pages:** _URL to be added_
+- **GitHub Pages:** https://erufukairi.github.io/DMX-Addressing-Tool/
+- **Cloudflare Pages:** https://dmx-addressing-tool.brandon-kitson.workers.dev/
 - **Single file:** each [release](../../releases) has a self-contained `.html` file that runs when opened straight from a phone or computer's storage, with no install.
 
 On iPhone, open the site in Safari and use Share → Add to Home Screen. On Android, open it in Chrome and install it from the menu. After the first load it works offline.

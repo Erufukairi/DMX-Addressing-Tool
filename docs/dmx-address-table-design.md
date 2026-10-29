@@ -108,6 +108,10 @@ Output:
 - A table with columns **Unit # | Address**
 - Results update live as the user types. There is no Calculate button.
 
+Actions:
+- **Reset** clears all three fields to their defaults: footprint blank, start address 1, quantity blank.
+- **Continue from next address**, a button at the end of the summary line. It sets the start address to the summary's next address and clears footprint and quantity, ready for the next fixture type on the same universe. It shows only when there is a next address, so it is hidden when the universe is full or the inputs have errors.
+
 ### 5.2 Advanced Mode (sequence builder)
 For mixed or interleaved rigs. The user builds an ordered list of **blocks**:
 - **Label** (optional, e.g. "Spot", "Wash")
@@ -291,6 +295,8 @@ Prettier and ESLint are not required. Add them only if they cause no friction.
 ### Phase 3 — Persistence
 
 Save, load, and delete layouts; location note; done checkmarks.
+
+Simple mode actions from §5.1: Reset, and Continue from next address.
 
 ### Phase 4 — Advanced mode
 
