@@ -1,0 +1,30 @@
+# On a version tag (v*), build the self-contained single-file HTML (design doc §2a)
+# and attach it to a GitHub Release. Uses the preinstalled gh CLI, no third-party action.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build:single
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          cp dist-single/index.html "dmx-address-table-$TAG.html"
+          gh release create "$TAG" "dmx-address-table-$TAG.html" --title "$TAG" --generate-notes

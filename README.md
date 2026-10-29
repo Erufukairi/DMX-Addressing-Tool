@@ -8,6 +8,14 @@ It runs as a Progressive Web App on Android, iPhone, and desktop browsers, with 
 
 See the [design document](docs/dmx-address-table-design.md) for scope, domain rules, and build phases.
 
+## Use it
+
+- **GitHub Pages:** _URL to be added_
+- **Cloudflare Pages:** _URL to be added_
+- **Single file:** each [release](../../releases) has a self-contained `.html` file that runs when opened straight from a phone or computer's storage, with no install.
+
+On iPhone, open the site in Safari and use Share → Add to Home Screen. On Android, open it in Chrome and install it from the menu. After the first load it works offline.
+
 ## Development
 
 Requires Node.js and npm.
@@ -28,6 +36,17 @@ npm install
 | `npm run typecheck` | Type-check only |
 
 All addressing math lives in `src/engine/`, a pure TypeScript module with no DOM, storage, or framework imports. Its tests are in `tests/engine/`.
+
+The app version shown in the header comes from `package.json`. Builds that aren't from a version tag add the short commit hash, e.g. `0.1.0+abc1234`.
+
+## Deployment
+
+- **GitHub Pages** (production): [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs tests, type-check, and build on every push to `main`, then deploys `dist/`. A failing test blocks the deploy. Repo **Settings → Pages → Source** must be set to **GitHub Actions**.
+- **Cloudflare Pages** (second host and branch previews): connected in the Cloudflare dashboard, with build command `npm run build` and output directory `dist`. `main` deploys to production; every other branch gets a preview URL. Test feature branches on a phone through their preview URL before merging. If the build picks the wrong Node version, set the `NODE_VERSION` environment variable to match [`.nvmrc`](.nvmrc).
+- **Releases:** pushing a `v*` tag runs [`.github/workflows/release.yml`](.github/workflows/release.yml), which attaches the single-file build to a GitHub Release.
+- **Bad cached release:** see the [service worker kill-switch](docs/kill-switch.md).
+
+Icons in `public/` were drawn by hand as `icon.svg` and rendered once to PNG with headless Edge. There's no icon generator in the build.
 
 ## License
 

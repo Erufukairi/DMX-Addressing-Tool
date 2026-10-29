@@ -1,0 +1,210 @@
+/* Dark theme only for now; light and red night themes (Phase 6) redefine these tokens. */
+:root {
+  --bg: #121417;
+  --surface: #1c1f24;
+  --surface-raised: #262a31;
+  --border: #353a43;
+  --text: #eef0f3;
+  --text-muted: #9aa1ad;
+  --accent: #ffb020;
+  --accent-text: #121417;
+  --error: #ff6b6b;
+  --row-alt: #171a1e;
+
+  --touch: 48px;
+  --radius: 10px;
+  --gutter: 16px;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 18px;
+  line-height: 1.4;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  max-width: 560px;
+  margin: 0 auto;
+  /* Clear the notch and home indicator when running standalone (viewport-fit=cover). */
+  padding: calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + var(--gutter))
+    calc(env(safe-area-inset-bottom) + 96px) calc(env(safe-area-inset-left) + var(--gutter));
+}
+
+.app-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0 12px;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.version {
+  color: var(--text-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* Inputs */
+
+.inputs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.field label {
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+}
+
+.field input {
+  width: 100%;
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 30px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.field input::placeholder {
+  color: var(--text-muted);
+  font-weight: 400;
+  opacity: 0.7;
+}
+
+.field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.field input[aria-invalid] {
+  border-color: var(--error);
+}
+
+.field-error {
+  margin: 6px 0 0;
+  color: var(--error);
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+/* Summary: stays visible while scrolling the table. */
+
+.summary {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 16px calc(-1 * var(--gutter)) 0;
+  padding: calc(env(safe-area-inset-top) + 12px) var(--gutter) 12px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.summary-idle {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+/* Table */
+
+.units {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+.units th {
+  padding: 10px 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: right;
+}
+
+.units td {
+  height: var(--touch);
+  padding: 4px 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--surface-raised);
+}
+
+.units tbody tr:nth-child(even) {
+  background: var(--row-alt);
+}
+
+.units .unit {
+  width: 40%;
+  color: var(--text-muted);
+  font-size: 20px;
+}
+
+.units .address {
+  font-size: 28px;
+  font-weight: 700;
+}
+
+/* Update notice */
+
+.update-notice {
+  position: fixed;
+  left: 50%;
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  transform: translateX(-50%);
+  width: calc(100% - 2 * var(--gutter));
+  max-width: 528px;
+  min-height: 56px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 700;
+  box-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
+  cursor: pointer;
+}
