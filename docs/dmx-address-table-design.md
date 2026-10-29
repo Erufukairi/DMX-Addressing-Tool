@@ -349,6 +349,29 @@ Each phase should end with a working, deployable build.
 - **Continue as an icon** instead of "Next 505 →", if a clear icon turns up.
 - **Advanced editor as a unit list.** An alternative to the block/pattern cards: a list of the units themselves, populated from a pattern, added one at a time, or reordered by hand. The cards work well; whether the list would be better needs hands-on testing, possibly on a separate branch with its own preview URL.
 
+### Field notes after Phase 4 (`44279fd`)
+
+The user paused here to gather real-world use and feedback from other techs. Revisit these with that feedback in hand.
+
+**Working well; keep:**
+- The UI feels clean and fluid overall.
+- **✓ Clear in the table's header row** was the right call for resetting checks.
+- **The advanced table:** the label colors and names give an immediate, intuitive read of the rig, and it's pleasant to look at.
+
+**To consider:**
+- **Menu.** Needs more attention, but best once all its entries exist (Share and Backup in Phase 5, Settings in Phase 6).
+- **Block color order.** The palette is 6 colors, then repeats: blue, green, pink, yellow, violet, orange (`--block-1` … `--block-6` in `src/ui/styles.css`). Issues seen on a phone:
+  - Blue and green, the first two and so the most common pair, don't contrast as much as they could, especially in the left-edge stripes.
+  - Pink reads as red next to yellow.
+  - Yellow and orange read as almost the same.
+
+  One candidate is to order by hue distance so neighbors contrast: blue, orange, green, pink, violet, yellow. That puts blue/orange first and separates yellow from orange. Another is to replace orange or yellow with a more distinct hue such as cyan/teal. How much this matters is debatable; check it in real use, and alongside the red night theme (Phase 6).
+- **Naming.**
+  - **Layouts** is nearly gone from the UI (it only titles the Open/Save page). Open and Save are the natural terms; retitle the page when Open and Save are separated (Phase 6).
+  - **Sequence** and **Block** aren't intuitive. Consider **Fixture** for Block. Sequence also needs a better name.
+  - Renames touch UI text only. The data model's `Block`/`sequence` names (§6) can stay, since JSON files depend on them.
+- **Steer toward patterns.** A run of blocks can't later be turned into a pattern, and nothing in the editor makes that clear. One option is for a new advanced sequence to always start as a pattern repeating ×1, so blocks added to it are already set up to repeat. Weigh this against the unit-list editor idea above, since both rethink how the editor starts.
+
 ## 10. Out of Scope
 
 - Universes, rollover, and absolute addressing
